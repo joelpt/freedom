@@ -1,3 +1,6 @@
+// TODO when releasing the skiing key, wait a few hundred ms before switching physic materials
+// and/or grounded state: we don't want to do ground-based deceleration when jetpacking
+
 var speed = 10.0;
 var gravity = 10.0;
 var maxVelocityChange = 10.0;
@@ -12,13 +15,15 @@ var skiingDampeningFactor = 0.02;
 var fuelAirControlFactor = 0.5;
 var fuelAirControlPenaltyFactor = 0.5;
 var freeAirControlFactor = 0.2;
+var airDrag = 0.1;
+var groundBrakingFactor = 10;
 
 @script RequireComponent(Rigidbody, CapsuleCollider)
  
 function Awake ()
 {
 	rigidbody.freezeRotation = true;
-	//rigidbody.useGravity = false;
+	rigidbody.useGravity = false;
 	
 }
 
@@ -83,28 +88,40 @@ function FixedUpdate ()
 		}
 	}
 	
+	if (!grounded) {
+		rigidbody.drag = airDrag;
+	}
+	else {
+		rigidbody.drag = 0;
+	}
 	
 	//grounded = true;
 	//Debug.Log(grounded);
-	if (grounded && !skiing) {
-		// Apply a force that attempts to reach our target velocity
-		var velocity = rigidbody.velocity;
-		var velocityChange = (targetVelocity - velocity);
-		velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
-		velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-		velocityChange.y = 0;
-		
-		if (groundNormal != null) {
-			velocityChange = AdjustGroundVelocityToNormal(velocityChange, groundNormal);
+	if (grounded && !skiing && !jetpacking) {
+		if (rigidbody.velocity.magnitude > speed) {
+			// Decelerate us
+			rigidbody.AddForce(-rigidbody.velocity * groundBrakingFactor);
 		}
-		
-		rigidbody.AddForce(velocityChange, ForceMode.VelocityChange);
+		else if (targetVelocity.magnitude > 0) {
+			// Apply a force that attempts to reach our target velocity
+			var velocity = rigidbody.velocity;
+			var velocityChange = (targetVelocity - velocity);
+			velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+			velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+			velocityChange.y = 0;
+			
+			if (groundNormal != null) {
+				velocityChange = AdjustGroundVelocityToNormal(velocityChange, groundNormal);
+			}
+			
+			rigidbody.AddForce(velocityChange, ForceMode.VelocityChange);
+		}
 	}
 //	else if (!grounded) {
 //		// Apply a force that attempts to accelerate in the desired direction
 //		rigidbody.AddForce(targetVelocity * airControlFactor, ForceMode.Acceleration);
 //	}
-	else if (skiing) {
+	else if (skiing && grounded) {
 		// Amplify skiing speed slightly when we start out
 		if (rigidbody.velocity.magnitude < skiingBoostBelowVelocity) {
 			rigidbody.AddForce(rigidbody.velocity * skiingBoostPercent, ForceMode.Impulse);
@@ -147,7 +164,7 @@ function FixedUpdate ()
 	//}
  
 	// We apply gravity manually for more tuning control
-	//rigidbody.AddForce(Vector3 (0, -gravity * rigidbody.mass, 0));
+	rigidbody.AddForce(Vector3 (0, -gravity * rigidbody.mass, 0));
  
 	grounded = false;
 }
