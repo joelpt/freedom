@@ -2,4 +2,4 @@ This is a very early prototype of a racing game focused around freedom of moveme
 
 The game engine is Unity Free.
 
-Read the [https://github.com/joelpt/freedom/wiki/Design-document](design document) for more.
+Read the [design document](https://github.com/joelpt/freedom/wiki/Design-document) for more.
